@@ -1,99 +1,51 @@
-Here’s your project formatted as a clean **GitHub-ready `README.md` file**:
+#  KeyDB Failover Setup using Docker Compose
 
-```markdown
-# 🚀 KeyDB Failover Setup using Terraform, Docker Compose, and Azure VM
+##  Overview
 
-## 📌 Overview
-This project demonstrates how to create a **KeyDB failover setup** using:
+This project demonstrates a **KeyDB master–replica setup** using:
 
-- Terraform (Infrastructure as Code)
-- Azure Virtual Machine (Ubuntu, 8GB RAM)
-- Docker & Docker Compose (Container orchestration)
+* Docker
+* Docker Compose
 
-The goal is to achieve **high availability**, ensuring data remains accessible even if the master node fails.
+The goal is to simulate **high availability**, ensuring data remains accessible even if the master node goes down.
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
+Client → Master → Replica
+              ↓
+        (Master fails)
+              ↓
+        Replica serves data
+```
 
-Client → Master → Replica → (Master fails) → Replica serves data
+### Components
 
-````
+* **Master**
 
-- **Master**: Handles writes
-- **Replica**: Syncs data and serves reads
-- **Failover**: Replica continues serving data if master goes down
+  * Handles write operations
+* **Replica**
+
+  * Syncs data from master
+  * Serves read requests
+* **Failover Behavior**
+
+  * Replica continues serving **read-only data** if master fails
+
+>  Note: This is **not automatic failover** (no promotion to master).
 
 ---
 
-## ⚙️ Step 1: Provision Infrastructure using Terraform
+##  Prerequisites
 
-### 📄 provider.tf
-```hcl
-provider "azurerm" {
-  features {}
-}
-````
-
-### 📄 variables.tf
-
-```hcl
-variable "location" {
-  default = "Central India"
-}
-
-variable "vm_size" {
-  default = "Standard_D2s_v3"
-}
-
-variable "admin_username" {
-  default = "azureuser"
-}
-
-variable "public_key_path" {
-  default = "vm-codoagent_key.pub"
-}
-```
-
-### 📄 outputs.tf
-
-```hcl
-output "public_ip" {
-  value = azurerm_public_ip.public_ip.ip_address
-}
-```
-
-### 📄 main.tf
-
-Includes:
-
-* Resource Group
-* Virtual Network
-* Subnet
-* Public IP
-* Network Interface
-* Linux Virtual Machine
-
-### ▶️ Run Terraform
-
-```bash
-terraform init
-terraform apply
-```
+* Linux system (Ubuntu recommended)
+* Docker & Docker Compose installed
 
 ---
 
-## 🔐 Step 2: Connect to VM
-
-```bash
-ssh -i vm-codoagent_key.pem azureuser@<public-ip>
-```
-
----
-
-## 🐳 Step 3: Install Docker
+##  Step 1: Install Docker
 
 ```bash
 sudo apt update
@@ -111,22 +63,21 @@ newgrp docker
 
 ---
 
-## 📁 Step 4: Create Project Directory
+## Step 2: Setup Environment File
+
+Copy the example file:
 
 ```bash
-mkdir keydb-setup
-cd keydb-setup
+cp .env.example .env
 ```
 
----
-
-## 🔑 Step 5: Create `.env` File
+Edit the file:
 
 ```bash
 nano .env
 ```
 
-Add:
+Update values if needed:
 
 ```env
 MASTER_PORT=6379
@@ -136,27 +87,7 @@ KEYDB_PASSWORD=12345
 
 ---
 
-## 🧩 Step 6: Create `docker-compose.yml`
-
-```yaml
-services:
-  master:
-    image: eqalpha/keydb
-    container_name: master
-    ports:
-      - "${MASTER_PORT}:6379"
-
-  replica:
-    image: eqalpha/keydb
-    container_name: replica
-    ports:
-      - "${REPLICA_PORT}:6379"
-    command: keydb-server --replicaof master 6379
-```
-
----
-
-## ▶️ Step 7: Start Containers
+##  Step 3: Start Containers
 
 ```bash
 docker compose up -d
@@ -170,12 +101,12 @@ docker ps
 
 ---
 
-## 🔄 Step 8: Test Replication
+##  Step 4: Test Replication
 
-### 🔹 On Master
+### On Master
 
 ```bash
-docker exec -it master keydb-cli
+docker exec -it master keydb-cli -a $KEYDB_PASSWORD
 ```
 
 ```bash
@@ -183,17 +114,19 @@ SET name "usama"
 GET name
 ```
 
-### 🔹 On Replica
+---
+
+### On Replica
 
 ```bash
-docker exec -it replica keydb-cli
+docker exec -it replica keydb-cli -a $KEYDB_PASSWORD
 ```
 
 ```bash
 GET name
 ```
 
-✅ Expected Output:
+Expected Output:
 
 ```
 "usama"
@@ -201,7 +134,7 @@ GET name
 
 ---
 
-## ⚠️ Step 9: Test Failover Scenario
+##  Step 5: Test Failover Scenario
 
 ### Stop Master
 
@@ -209,23 +142,17 @@ GET name
 docker stop master
 ```
 
-### Check Containers
-
-```bash
-docker ps
-```
-
 ### Access Replica
 
 ```bash
-docker exec -it replica keydb-cli
+docker exec -it replica keydb-cli -a $KEYDB_PASSWORD
 ```
 
 ```bash
 GET name
 ```
 
-✅ Expected Output:
+ Expected Output:
 
 ```
 "usama"
@@ -233,56 +160,24 @@ GET name
 
 ---
 
-## ✅ Step 10: Validate Behavior
+##  Step 6: Validate Behavior
 
-* ✔️ Master handles writes
-* ✔️ Replica syncs data
-* ✔️ Replica serves data when master is down
-* ✔️ Replica is read-only
-
----
-
-## 🎯 Conclusion
-
-This project demonstrates how to build a **fault-tolerant KeyDB system** using:
-
-* Terraform for infrastructure
-* Docker for containerization
-* Docker Compose for orchestration
-
-It ensures:
-
-* High availability
-* Data reliability
-* Real-world DevOps readiness
+*  Master handles writes
+*  Replica syncs data
+*  Replica serves data when master is down
+*  Replica is **read-only**
 
 ---
 
-## 📌 Future Improvements
+##  Limitations
 
-* Add KeyDB Sentinel for automatic failover
-* Use Load Balancer for traffic routing
-* Secure setup with authentication & firewall rules
-* Monitoring with Prometheus + Grafana
-
----
-
-## 🤝 Contributing
-
-Feel free to fork this repo and submit pull requests!
+* No automatic failover
+* No master election
+* Manual recovery required
+* Single replica (not production-ready)
 
 ---
 
-## 📜 License
 
-This project is licensed under the MIT License.
 
-```
-
----
-
-If you want, I can also:
-- Split Terraform into production-grade modules  
-- Add Sentinel-based automatic failover  
-- Convert this into a **real DevOps portfolio project (resume-ready)**
-```
+It provides a strong foundation for learning **DevOps and distributed systems**.
