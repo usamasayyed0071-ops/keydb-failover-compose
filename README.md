@@ -68,8 +68,7 @@ newgrp docker
 Copy the example file:
 
 ```bash
-cp .env.example .env
-```
+cp .env.example ```
 
 Edit the file:
 
