@@ -82,7 +82,9 @@ Update values if needed:
 MASTER_PORT=6379
 REPLICA_PORT=6380
 KEYDB_PASSWORD=12345
+
 ```
+## sudo docker exec -it master keydb-cli -a "your_password_here"
 
 ---
 
