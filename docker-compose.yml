@@ -1,0 +1,13 @@
+services:
+  master:
+    image: eqalpha/keydb
+    container_name: master
+    ports:
+      - "${MASTER_PORT}:6379"
+
+  replica:
+    image: eqalpha/keydb
+    container_name: replica
+    ports:
+      - "${REPLICA_PORT}:6379"
+    command: keydb-server --replicaof master 6379
